@@ -1,125 +1,182 @@
-function find() { // Egzersiz A
-  /*
-    1A- Aşağıdaki SQL sorgusunu SQLite Studio'da "data/schemes.db3" ile karşılaştırarak inceleyin.
-    LEFT joini Inner joine çevirirsek ne olur?
+const db = require("../../data/db-config");
 
+function find() {
+  /*
       SELECT
-          sc.*,
-          count(st.step_id) as number_of_steps
-      FROM schemes as sc
-      LEFT JOIN steps as st
-          ON sc.scheme_id = st.scheme_id
-      GROUP BY sc.scheme_id
-      ORDER BY sc.scheme_id ASC;
-
-    2A- Sorguyu kavradığınızda devam edin ve onu Knex'te oluşturun.
-    Bu işlevden elde edilen veri kümesini döndürün.
+          schemes.*,
+          count(steps.step_id) as number_of_steps
+      FROM schemes
+      LEFT JOIN steps
+          ON schemes.scheme_id= steps.scheme_id
+      GROUP BY schemes.scheme_id
+      ORDER BY schemes.scheme_id ASC;
   */
+  return db
+    .select("schemes.*")
+    .count("steps.step_id as number_of_steps")
+    .from("schemes")
+    .leftJoin("steps", "schemes.scheme_id", "steps.scheme_id")
+    .groupBy("schemes.scheme_id")
+    .orderBy("schemes.scheme_id", "asc");
+}
+//!----------------------------------------------------------------------------------------------------
+
+// SELECT
+// scheme_name
+// FROM schemes
+// WHERE scheme_name="Revenge"
+async function findByName(name) {
+  const isim = await db
+    .select("scheme_name")
+    .from("schemes")
+    .where("scheme_name", name);
+  return isim[0];
 }
 
-function findById(scheme_id) { // Egzersiz B
+async function findById(scheme_id) {
   /*
-    1B- Aşağıdaki SQL sorgusunu SQLite Studio'da "data/schemes.db3" ile karşılaştırarak inceleyin:
-
       SELECT
-          sc.scheme_name,
-          st.*
-      FROM schemes as sc
-      LEFT JOIN steps as st
-          ON sc.scheme_id = st.scheme_id
-      WHERE sc.scheme_id = 1
-      ORDER BY st.step_number ASC;
-
-    2B- Sorguyu kavradığınızda devam edin ve onu Knex'te oluşturun
-    parametrik yapma: `1` hazır değeri yerine `scheme_id` kullanmalısınız.
-
-    3B- Postman'da test edin ve ortaya çıkan verilerin bir şema gibi görünmediğini görün,
-    ancak daha çok her biri şema bilgisi içeren bir step dizisi gibidir:
-
-      [
-        {
-          "scheme_id": 1,
-          "scheme_name": "World Domination",
-          "step_id": 2,
-          "step_number": 1,
-          "instructions": "solve prime number theory"
-        },
-        {
-          "scheme_id": 1,
-          "scheme_name": "World Domination",
-          "step_id": 1,
-          "step_number": 2,
-          "instructions": "crack cyber security"
-        },
-        // etc
-      ]
-
-    4B- Elde edilen diziyi ve vanilya JavaScript'i kullanarak, ile bir nesne oluşturun.
-   Belirli bir "scheme_id" için adımların mevcut olduğu durum için aşağıdaki yapı:
-
-      {
-        "scheme_id": 1,
-        "scheme_name": "World Domination",
-        "steps": [
-          {
-            "step_id": 2,
-            "step_number": 1,
-            "instructions": "solve prime number theory"
-          },
-          {
-            "step_id": 1,
-            "step_number": 2,
-            "instructions": "crack cyber security"
-          },
-          // etc
-        ]
-      }
-
-    5B- Bir "scheme_id" için adım yoksa, sonuç şöyle görünmelidir:
-
-      {
-        "scheme_id": 7,
-        "scheme_name": "Have Fun!",
-        "steps": []
-      }
+       schemes.scheme_id,
+        schemes.scheme_name,
+        steps.step_id,
+        steps.step_number,
+        steps.instructions
+      FROM schemes
+      LEFT JOIN steps
+        ON schemes.scheme_id = steps.scheme_id
+      WHERE schemes.scheme_id = 1
+      ORDER BY steps.step_number ASC;
   */
+  const temeltablo = await db
+    .leftJoin("steps", "schemes.scheme_id ", "steps.scheme_id")
+    .select("schemes.scheme_id", "schemes.scheme_name")
+    .select("steps.*")
+    .from("schemes")
+    .where("schemes.scheme_id", scheme_id)
+    .orderBy("steps.step_number", "asc");
+
+  if (temeltablo.length === 0) {
+    return null;
+  }
+
+  const response = {
+    scheme_id: parseInt(scheme_id),
+    scheme_name: temeltablo[0].scheme_name,
+    steps: [],
+  };
+
+  if (!temeltablo[0].step_id) {
+    return response;
+  } else {
+    temeltablo.forEach((obj) => {
+      response.steps.push({
+        step_id: obj.step_id,
+        step_number: obj.step_number,
+        instructions: obj.instructions,
+      });
+    });
+    return response;
+  }
 }
 
-function findSteps(scheme_id) { // Egzersiz C
-  /*
-    1C- Knex'te aşağıdaki verileri döndüren bir sorgu oluşturun.
-    Adımlar, adım_numarası'na göre sıralanmalıdır ve dizi
-    Şema için herhangi bir adım yoksa boş olmalıdır:
+//!----------------------------------------------------------------------------------------------------
 
-      [
-        {
-          "step_id": 5,
-          "step_number": 1,
-          "instructions": "collect all the sheep in Scotland",
-          "scheme_name": "Get Rich Quick"
-        },
-        {
-          "step_id": 4,
-          "step_number": 2,
-          "instructions": "profit",
-          "scheme_name": "Get Rich Quick"
-        }
-      ]
+async function findSteps(scheme_id) {
+  /*
+     
+    SELECT
+        steps.step_id,
+        steps.step_number,
+        steps.instructions,
+        schemes.scheme_name
+      FROM schemes
+      LEFT JOIN steps
+        ON schemes.scheme_id = steps.scheme_id
+      WHERE schemes.scheme_id = 2
+      ORDER BY steps.step_number ASC;
   */
+  const tablo = await db
+    .select(
+      "steps.step_id",
+      "steps.step_number",
+      "steps.instructions",
+      "schemes.scheme_name"
+    )
+    .from("schemes")
+    .leftJoin("steps", "schemes.scheme_id", "steps.scheme_id")
+    .where("schemes.scheme_id", scheme_id)
+    .orderBy("steps.step_number", "asc");
+
+  if (!tablo[0].step_id) {
+    return [];
+  } else {
+    return tablo;
+  }
 }
+//!----------------------------------------------------------------------------------------------------
 
-function add(scheme) { // Egzersiz D
+async function add(scheme) {
   /*
-    1D- Bu işlev yeni bir şema oluşturur ve _yeni oluşturulan şemaya çözümlenir.
+      SELECT
+        scheme_id,
+        scheme_name
+      FROM schemes
+      WHERE scheme_id = 1
+
+[POST] /api/schemes { "scheme_name": "Take Ovah" }
+  response:
+  {
+    "scheme_id": 8,
+    "scheme_name": "Take Ovah"
+  }
   */
+  await db("schemes").insert(scheme);
+
+  const response = await db
+    .select("scheme_id", "scheme_name")
+    .from("schemes")
+    .where("scheme_name", scheme.scheme_name);
+
+  return await response[0];
 }
+//!----------------------------------------------------------------------------------------------------
 
-function addStep(scheme_id, step) { // EXERCISE E
+async function addStep(scheme_id, step) {
   /*
-    1E- Bu işlev, verilen 'scheme_id' ile şemaya bir adım ekler.
-    ve verilen "scheme_id"ye ait _tüm adımları_ çözer,
-    yeni oluşturulan dahil.
+[POST] /api/schemes/5/steps { "instructions": "and yet more questing", "step_number": 2 }
+  response:
+  [
+    {
+      "step_id": 12,
+      "step_number": 1,
+      "instructions": "quest and quest some more",
+      "scheme_name": "Find the Holy Grail"
+    },
+    {
+      "step_id": 17,
+      "step_number": 2,
+      "instructions": "and yet more questing",
+      "scheme_name": "Find the Holy Grail"
+    }
+  ]
   */
+  await db("steps").insert({
+    step_number: step.step_number,
+    instructions: step.instructions,
+    scheme_id: scheme_id,
+  });
+  // const response = await db
+  //   .select(
+  //     "steps.step_id",
+  //     "steps.step_number",
+  //     "steps.instructions",
+  //     "schemes.scheme_name"
+  //   )
+  //   .from("schemes")
+  //   .leftJoin("steps", "schemes.scheme_id", "steps.scheme_id")
+  //   .where("schemes.scheme_id", scheme_id);
+  // return response;
+  return await findSteps(scheme_id);
 }
 
 module.exports = {
@@ -128,4 +185,5 @@ module.exports = {
   findSteps,
   add,
   addStep,
-}
+  findByName,
+};

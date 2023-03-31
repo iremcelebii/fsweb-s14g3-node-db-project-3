@@ -1,42 +1,67 @@
-/*
-  Eğer `scheme_id` veritabanında yoksa:
+const schemeModel = require("./scheme-model");
 
-  durum 404
-  {
-    "message": "scheme_id <gerçek id> id li şema bulunamadı"
+const checkSchemeId = async (req, res, next) => {
+  try {
+    let obj = await schemeModel.findById(req.params.scheme_id);
+    if (!obj) {
+      res.status(404).json({
+        message: `scheme_id ${req.params.scheme_id} id li şema bulunamadı`,
+      });
+    } else {
+      next();
+    }
+  } catch (err) {
+    next(err);
   }
-*/
-const checkSchemeId = (req, res, next) => {
+};
 
-}
-
-/*
-  Eğer `scheme_name` yoksa, boş string ya da string değil:
-
-  durum 400
-  {
-    "message": "Geçersiz scheme_name"
+const validateScheme = async (req, res, next) => {
+  const name = req.body.scheme_name;
+  if (!name || typeof name !== "string") {
+    res.status(400).json({
+      message: "Geçersiz scheme_name",
+    });
+  } else {
+    next();
   }
-*/
-const validateScheme = (req, res, next) => {
+};
 
-}
-
-/*
-  Eğer `instructions` yoksa, boş string yada string değilse, ya da
-  eğer `step_number` sayı değilse ya da birden küçükse:
-
-  durum 400
-  {
-    "message": "Hatalı step"
+const checkSchemeName = async (req, res, next) => {
+  try {
+    let name = req.body.scheme_name;
+    if (name) {
+      res.status(404).json({
+        message: "bu şema ismi mevcut",
+      });
+    } else {
+      next();
+    }
+  } catch (err) {
+    next(err);
   }
-*/
+};
+
 const validateStep = (req, res, next) => {
-
-}
+  const instruction = req.body.instructions;
+  const number = req.body.step_number;
+  if (
+    !instruction ||
+    typeof instruction !== "string" ||
+    !number ||
+    number < 1 ||
+    typeof number !== "number"
+  ) {
+    res.status(400).json({
+      message: "Hatalı step",
+    });
+  } else {
+    next();
+  }
+};
 
 module.exports = {
   checkSchemeId,
   validateScheme,
   validateStep,
-}
+  checkSchemeName,
+};
